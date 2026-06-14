@@ -1,10 +1,3 @@
-"""
-Room, RoomManager, dan Matchmaker.
-
-Room menyimpan daftar pemain (beserta koneksi), status, dan instance
-GameEngine saat match berjalan. RoomManager mengelola seluruh room.
-Matchmaker menempatkan pemain ke room WAITING yang tersedia atau membuat baru.
-"""
 import secrets
 import threading
 import time
@@ -15,14 +8,12 @@ from shared.constants import (
 )
 from server.core.game_engine import GameEngine
 
-
 class Member:
-    """Anggota room: mengikat user ke koneksi & role."""
 
     def __init__(self, user_id: int, username: str, conn):
         self.user_id = user_id
         self.username = username
-        self.conn = conn                       # socket; None bila disconnect
+        self.conn = conn
         self.role = PlayerRole.PLAYER
         self.connected = True
         self.disconnect_at: float | None = None
@@ -31,16 +22,14 @@ class Member:
         return {"user_id": self.user_id, "username": self.username,
                 "role": self.role, "connected": self.connected}
 
-
 def normalize_match_mode(value: str | None) -> str:
     value = (value or MATCH_MODE_RANKED).lower()
     return value if value in MATCH_MODES else MATCH_MODE_RANKED
 
-
 class Room:
     def __init__(self, host_id: int, match_mode: str = MATCH_MODE_RANKED):
         self.room_id = secrets.token_hex(8)
-        self.room_code = secrets.token_hex(2).upper()  # 4 char
+        self.room_code = secrets.token_hex(2).upper()
         self.host_id = host_id
         self.match_mode = normalize_match_mode(match_mode)
         self.status = RoomStatus.WAITING
@@ -49,11 +38,8 @@ class Room:
         self.lock = threading.RLock()
         self.created_at = time.time()
 
-    # -- keanggotaan --------------------------------------------------------
     def add_member(self, member: Member) -> bool:
         with self.lock:
-            # Akun yang sama sudah berada di room ini: jangan buat entri duplikat,
-            # cukup ikat ulang koneksi terbaru (mencegah "dua pemain" dari satu akun).
             existing = self.get_member(member.user_id)
             if existing:
                 existing.conn = member.conn
@@ -92,7 +78,6 @@ class Room:
             return False, "not_enough_players"
         return True, ""
 
-    # -- match --------------------------------------------------------------
     def start_match(self) -> None:
         with self.lock:
             seats = [(m.user_id, m.username) for m in self.players()]
@@ -108,7 +93,6 @@ class Room:
             "status": self.status,
             "players": [m.to_dict() for m in self.members],
         }
-
 
 class RoomManager:
     def __init__(self):
@@ -141,9 +125,7 @@ class RoomManager:
             for rid in [r for r, room in self.rooms.items() if room.is_empty()]:
                 self.rooms.pop(rid, None)
 
-
 class Matchmaker:
-    """Menempatkan pemain ke room WAITING yang punya slot, atau buat baru."""
 
     def __init__(self, room_manager: RoomManager):
         self.rm = room_manager

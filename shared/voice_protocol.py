@@ -1,4 +1,3 @@
-"""Protokol voice chat UDP berbasis JSON + base64 PCM16."""
 import base64
 import json
 import time
@@ -17,10 +16,8 @@ VOICE_FRAME_SAMPLES = VOICE_SAMPLE_RATE * VOICE_FRAME_MS // 1000
 MAX_VOICE_PACKET_SIZE = 4096
 MAX_AUDIO_BYTES = VOICE_FRAME_SAMPLES * VOICE_CHANNELS * 2
 
-
 class VoiceProtocolError(Exception):
     pass
-
 
 def encode_packet(ptype: str, payload: dict | None = None) -> bytes:
     obj = {
@@ -32,7 +29,6 @@ def encode_packet(ptype: str, payload: dict | None = None) -> bytes:
     if len(raw) > MAX_VOICE_PACKET_SIZE:
         raise VoiceProtocolError("voice packet too large")
     return raw
-
 
 def decode_packet(data: bytes) -> dict:
     if not data or len(data) > MAX_VOICE_PACKET_SIZE:
@@ -49,12 +45,10 @@ def decode_packet(data: bytes) -> dict:
         raise VoiceProtocolError("bad packet shape")
     return pkt
 
-
 def encode_audio(raw_pcm: bytes) -> str:
     if len(raw_pcm) > MAX_AUDIO_BYTES:
         raise VoiceProtocolError("audio frame too large")
     return base64.b64encode(raw_pcm).decode("ascii")
-
 
 def decode_audio(value: str) -> bytes:
     if not isinstance(value, str):

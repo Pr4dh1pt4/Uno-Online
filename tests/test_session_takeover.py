@@ -1,4 +1,3 @@
-"""Session takeover: login baru melanjutkan match tanpa membuat player kalah."""
 import sys
 import types
 
@@ -20,7 +19,6 @@ db.execute = lambda *a, **k: 1
 from server.core.room import Member
 from server.socket_server import ClientSession, SocketServer
 
-
 class FakeConn:
     def __init__(self):
         self.sent = []
@@ -31,7 +29,6 @@ class FakeConn:
 
     def close(self):
         self.closed = True
-
 
 def test_login_takeover_keeps_player_in_match():
     srv = SocketServer()
@@ -62,7 +59,6 @@ def test_login_takeover_keeps_player_in_match():
     assert member.connected is True
     assert not room.engine.game_over
     assert room.engine.get_player(1).is_active
-
 
 def test_session_resume_rebinds_disconnected_player():
     srv = SocketServer()

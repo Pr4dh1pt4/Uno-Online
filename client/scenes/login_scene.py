@@ -1,4 +1,3 @@
-"""Scene login & register — desain premium."""
 import pygame
 
 import config
@@ -12,7 +11,6 @@ from client.ui.widgets import (
 )
 from client.ui import assets
 from client.ui import sounds
-
 
 class LoginScene(Scene):
     def __init__(self, app):
@@ -46,7 +44,6 @@ class LoginScene(Scene):
     def handle_event(self, event):
         for w in (self.username, self.password, self.btn_login, self.btn_register):
             w.handle(event)
-        # Enter pada salah satu field langsung mencoba masuk (paritas dengan web).
         if event.type == pygame.KEYDOWN and event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
             if self.username.text and self.password.text:
                 self._login()
@@ -95,39 +92,32 @@ class LoginScene(Scene):
         self._tick += 1
 
     def draw(self, surf):
-        # Background gradient + partikel
         draw_bg_gradient(surf, (18, 22, 38), (8, 10, 18))
         draw_particles(surf, self._tick, count=25, color=(100, 120, 200))
 
         cx = config.WINDOW_WIDTH // 2
         cy = config.WINDOW_HEIGHT // 2
 
-        # Logo / banner
         ban = assets.banner()
         if ban:
             ban = pygame.transform.smoothscale(ban, (200, 160))
             surf.blit(ban, ban.get_rect(center=(cx, 140)))
 
-        # Title dengan glow
         draw_glow(surf, (cx, 252), 80, Palette.ACCENT, intensity=0.5)
         draw_text(surf, "UNO Online", (cx, 252), 44, Palette.TEXT, bold=True,
                   center=True, shadow=True)
 
-        # Card form panel
         form_rect = (cx - 190, 300, 380, 234)
         draw_shadow_rect(surf, form_rect, offset=6, alpha=50, border_radius=16)
         draw_gradient_rect(surf, form_rect, (30, 34, 52), (22, 26, 40),
                            border_radius=16)
         pygame.draw.rect(surf, Palette.PANEL_BORDER, form_rect, 1, border_radius=16)
 
-        # Input fields & buttons
         for w in (self.username, self.password, self.btn_login, self.btn_register):
             w.draw(surf)
 
-        # Pesan
         if self.message:
             draw_text(surf, self.message, (cx, 530), 17, self.msg_color, center=True)
 
-        # Footer
         draw_text(surf, f"Server: {config.CLIENT_CONNECT_HOST}:{config.SERVER_PORT}",
                   (cx, config.WINDOW_HEIGHT - 30), 13, Palette.TEXT_MUTED, center=True)

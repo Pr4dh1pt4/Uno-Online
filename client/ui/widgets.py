@@ -1,15 +1,9 @@
-"""Widget UI premium untuk Pygame: Button, TextInput, palet warna, dan utilitas render."""
 import math
 import pygame
 
 from client.ui import sounds
 
-
-# ──────────────────────────────────────────────────────────────────────────────
-# Palet warna premium (dark theme dengan aksen UNO)
-# ──────────────────────────────────────────────────────────────────────────────
 class Palette:
-    # Latar & panel
     BG = (16, 18, 27)
     BG_GRADIENT_TOP = (20, 22, 35)
     BG_GRADIENT_BOT = (10, 12, 20)
@@ -18,17 +12,14 @@ class Palette:
     PANEL_LIGHT = (48, 54, 76)
     PANEL_BORDER = (60, 66, 92)
 
-    # Aksen
-    ACCENT = (235, 64, 52)         # merah UNO
+    ACCENT = (235, 64, 52)
     ACCENT_HOVER = (255, 90, 78)
     ACCENT_GLOW = (235, 64, 52, 80)
 
-    # Teks
     TEXT = (240, 242, 250)
     TEXT_DIM = (130, 138, 160)
     TEXT_MUTED = (90, 96, 115)
 
-    # Warna fungsional
     GREEN = (56, 193, 114)
     GREEN_HOVER = (72, 213, 130)
     YELLOW = (250, 204, 50)
@@ -38,7 +29,6 @@ class Palette:
     GOLD_GLOW = (218, 180, 56, 60)
     PURPLE = (140, 100, 240)
 
-    # Warna UNO kartu
     UNO_COLORS = {
         "Red": (220, 50, 42),
         "Green": (68, 180, 75),
@@ -46,7 +36,6 @@ class Palette:
         "Yellow": (248, 205, 40),
     }
 
-    # Rank tiers
     RANK_COLORS = {
         "Bronze": (186, 150, 95),
         "Silver": (195, 200, 215),
@@ -54,17 +43,11 @@ class Palette:
         "Platinum": (100, 210, 230),
     }
 
-
-# ──────────────────────────────────────────────────────────────────────────────
-# Font helper — caching font instances
-# ──────────────────────────────────────────────────────────────────────────────
 _font_cache: dict[tuple, pygame.font.Font] = {}
-
 
 def _get_font(size: int = 22, bold: bool = False) -> pygame.font.Font:
     key = (size, bold)
     if key not in _font_cache:
-        # Coba font modern, fallback ke Arial
         for name in ("Segoe UI", "Helvetica Neue", "Arial"):
             try:
                 _font_cache[key] = pygame.font.SysFont(name, size, bold=bold)
@@ -75,13 +58,8 @@ def _get_font(size: int = 22, bold: bool = False) -> pygame.font.Font:
             _font_cache[key] = pygame.font.SysFont(None, size, bold=bold)
     return _font_cache[key]
 
-
-# ──────────────────────────────────────────────────────────────────────────────
-# Drawing utilities
-# ──────────────────────────────────────────────────────────────────────────────
 def draw_text(surf, text, pos, size=22, color=None, bold=False, center=False,
               shadow=False, shadow_color=(0, 0, 0)):
-    """Render teks dengan opsi shadow & center."""
     if color is None:
         color = Palette.TEXT
     font = _get_font(size, bold)
@@ -102,9 +80,7 @@ def draw_text(surf, text, pos, size=22, color=None, bold=False, center=False,
     surf.blit(img, rect)
     return rect
 
-
 def draw_gradient_rect(surf, rect, color_top, color_bot, border_radius=0):
-    """Gambar rectangle dengan gradient vertikal."""
     r = pygame.Rect(rect)
     if r.h <= 0 or r.w <= 0:
         return
@@ -123,9 +99,7 @@ def draw_gradient_rect(surf, rect, color_top, color_bot, border_radius=0):
         temp.blit(mask_surf, (0, 0), special_flags=pygame.BLEND_RGBA_MIN)
     surf.blit(temp, r.topleft)
 
-
 def draw_glow(surf, center, radius, color, intensity=1.0):
-    """Gambar efek glow lingkaran semi-transparan."""
     glow_surf = pygame.Surface((radius * 2, radius * 2), pygame.SRCALPHA)
     for i in range(radius, 0, -1):
         alpha = int((i / radius) * 40 * intensity)
@@ -133,18 +107,14 @@ def draw_glow(surf, center, radius, color, intensity=1.0):
         pygame.draw.circle(glow_surf, c, (radius, radius), i)
     surf.blit(glow_surf, (center[0] - radius, center[1] - radius))
 
-
 def draw_shadow_rect(surf, rect, offset=4, alpha=50, border_radius=12):
-    """Gambar shadow di bawah rectangle."""
     shadow = pygame.Surface((rect[2] + offset * 2, rect[3] + offset * 2), pygame.SRCALPHA)
     pygame.draw.rect(shadow, (0, 0, 0, alpha),
                      (offset, offset, rect[2], rect[3]),
                      border_radius=border_radius)
     surf.blit(shadow, (rect[0] - offset, rect[1] - offset))
 
-
 def draw_bg_gradient(surf, color_top=None, color_bot=None):
-    """Isi surface dengan gradient vertikal penuh."""
     if color_top is None:
         color_top = Palette.BG_GRADIENT_TOP
     if color_bot is None:
@@ -155,9 +125,7 @@ def draw_bg_gradient(surf, color_top=None, color_bot=None):
         c = tuple(int(color_top[i] + (color_bot[i] - color_top[i]) * t) for i in range(3))
         pygame.draw.line(surf, c, (0, y), (w, y))
 
-
 def draw_particles(surf, tick, count=30, color=None):
-    """Gambar partikel floating untuk efek ambient."""
     if color is None:
         color = (255, 255, 255)
     w, h = surf.get_size()
@@ -171,10 +139,6 @@ def draw_particles(surf, tick, count=30, color=None):
         pygame.draw.circle(ps, (*color[:3], alpha), (radius, radius), radius)
         surf.blit(ps, (x, y))
 
-
-# ──────────────────────────────────────────────────────────────────────────────
-# Button widget
-# ──────────────────────────────────────────────────────────────────────────────
 class Button:
     def __init__(self, rect, label, on_click=None, color=None, font_size=20,
                  hover_color=None, icon=None):
@@ -201,15 +165,12 @@ class Button:
                 self.on_click()
 
     def draw(self, surf):
-        # Animasi press
         if self._press_anim > 0:
             self._press_anim = max(0, self._press_anim - 0.08)
 
         r = self.rect
-        # Shadow
         draw_shadow_rect(surf, r, offset=3, alpha=40, border_radius=12)
 
-        # Warna
         if not self.enabled:
             col_top = Palette.PANEL_LIGHT
             col_bot = Palette.PANEL
@@ -220,26 +181,19 @@ class Button:
             col_top = self.color
             col_bot = tuple(max(0, c - 20) for c in self.color)
 
-        # Shrink saat press
         inset = int(self._press_anim * 2)
         draw_r = r.inflate(-inset * 2, -inset * 2)
         draw_gradient_rect(surf, draw_r, col_top, col_bot, border_radius=12)
 
-        # Border halus
         if self.hover and self.enabled:
             pygame.draw.rect(surf, (*self.hover_color[:3],), draw_r, 2, border_radius=12)
 
-        # Label
         font = _get_font(self.font_size, bold=True)
         txt = font.render(self.label, True, Palette.TEXT)
         txt_col = Palette.TEXT if self.enabled else Palette.TEXT_DIM
         txt = font.render(self.label, True, txt_col)
         surf.blit(txt, txt.get_rect(center=draw_r.center))
 
-
-# ──────────────────────────────────────────────────────────────────────────────
-# TextInput widget
-# ──────────────────────────────────────────────────────────────────────────────
 class TextInput:
     def __init__(self, rect, placeholder="", password=False, max_len=32):
         self.rect = pygame.Rect(rect)
@@ -263,15 +217,11 @@ class TextInput:
 
     def draw(self, surf):
         r = self.rect
-        # Shadow
         draw_shadow_rect(surf, r, offset=2, alpha=30, border_radius=10)
 
-        # Background
         pygame.draw.rect(surf, Palette.PANEL, r, border_radius=10)
 
-        # Border dengan glow saat aktif
         if self.active:
-            # Glow border
             glow_rect = r.inflate(4, 4)
             pygame.draw.rect(surf, (*Palette.ACCENT[:3], 60), glow_rect, 3,
                              border_radius=12)
@@ -279,20 +229,17 @@ class TextInput:
         else:
             pygame.draw.rect(surf, Palette.PANEL_BORDER, r, 1, border_radius=10)
 
-        # Teks
         font = _get_font(20)
         shown = ("●" * len(self.text)) if self.password else self.text
         if shown:
             txt = font.render(shown, True, Palette.TEXT)
         else:
             txt = font.render(self.placeholder, True, Palette.TEXT_MUTED)
-        # Clip teks agar tidak keluar field
         clip = pygame.Rect(r.x + 14, r.y, r.w - 28, r.h)
         surf.set_clip(clip)
         surf.blit(txt, (r.x + 14, r.y + (r.h - txt.get_height()) // 2))
         surf.set_clip(None)
 
-        # Cursor saat aktif
         if self.active:
             self._cursor_blink += 0.04
             if math.sin(self._cursor_blink * 3) > 0:

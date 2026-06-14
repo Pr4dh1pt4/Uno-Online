@@ -1,9 +1,3 @@
-"""
-SocketServer — server TCP authoritative dengan satu thread per client.
-
-Bertanggung jawab atas: menerima koneksi, autentikasi, routing paket ke
-handler, broadcast state, spectator mode, reconnect handling, dan logging.
-"""
 import socket
 import threading
 import time
@@ -22,16 +16,14 @@ from server.services import auth_service, leaderboard_service
 from server.utils import logger
 from server.voice_server import VoiceServer
 
-
 class ClientSession:
-    """State per koneksi client."""
 
     def __init__(self, conn, addr):
         self.conn = conn
         self.addr = addr
         self.user_id: int | None = None
         self.username: str | None = None
-        self.room = None                      # Room saat ini
+        self.room = None
         self.seq_tracker = validator.ConnSeqTracker()
         self.send_lock = threading.Lock()
         self._closed = False
@@ -49,26 +41,21 @@ class ClientSession:
                 pass
 
     def force_close(self) -> None:
-        """Force close the connection (used when kicking duplicate sessions)."""
         self._closed = True
         try:
             self.conn.close()
         except OSError:
             pass
 
-
 class SocketServer:
     def __init__(self):
         self.rm = RoomManager()
         self.matchmaker = Matchmaker(self.rm)
-        # registry user_id -> semua koneksi login aktif.
-        # Broadcast room memilih session yang memang sedang terikat ke room tersebut.
         self.sessions: dict[int, set[ClientSession]] = {}
         self.sessions_lock = threading.Lock()
         self.voice_server = VoiceServer(self.rm)
         self._running = False
 
-    # -- lifecycle ----------------------------------------------------------
     def start(self) -> None:
         srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -87,7 +74,6 @@ class SocketServer:
         finally:
             srv.close()
 
-    # -- loop per client ----------------------------------------------------
     def _handle_client(self, conn, addr):
         sess = ClientSession(conn, addr)
         logger.info(f"Koneksi baru dari {addr}")
@@ -100,7 +86,7 @@ class SocketServer:
                     sess.send(S2C.ACTION_REJECTED, {"reason": RejectReason.INVALID_PACKET})
                     continue
                 if pkt is None:
-                    break  # koneksi tertutup
+                    break
                 self._route(sess, pkt)
         except OSError:
             pass
@@ -109,7 +95,6 @@ class SocketServer:
             conn.close()
             logger.info(f"Koneksi {addr} ditutup")
 
-    # -- routing ------------------------------------------------------------
     def _route(self, sess: ClientSession, pkt: dict):
         result = validator.run_pipeline(pkt, sess.authenticated, sess.seq_tracker)
         if not result.ok:
@@ -141,7 +126,6 @@ class SocketServer:
         if handler:
             handler(sess, payload)
 
-    # -- handlers: auth -----------------------------------------------------
     def _h_register(self, sess, payload):
         ok, res = auth_service.register(payload.get("username", ""), payload.get("password", ""))
         if ok:
@@ -184,7 +168,6 @@ class SocketServer:
         sess.send(S2C.PONG, {"client_ts": payload.get("client_ts"),
                              "server_ts": round(time.time(), 3)})
 
-    # -- handlers: room -----------------------------------------------------
     def _h_create_room(self, sess, payload):
         if sess.room:
             self._leave_room(sess)
@@ -212,8 +195,6 @@ class SocketServer:
         if room.status != RoomStatus.WAITING:
             sess.send(S2C.JOIN_FAIL, {"reason": "already_started"})
             return
-        # Keluar dari room lama dulu bila berpindah, supaya satu akun tidak
-        # tampil di dua room sekaligus.
         if sess.room and sess.room is not room:
             self._leave_room(sess)
         member = Member(sess.user_id, sess.username, sess.conn)
@@ -250,7 +231,6 @@ class SocketServer:
             return
         room.start_match()
         logger.activity(sess.user_id, "START_MATCH", {"room_id": room.room_id})
-        # kirim GAME_START dgn tangan masing-masing
         for m in room.players():
             s = self._sess_of(m.user_id, room)
             if s:
@@ -259,13 +239,11 @@ class SocketServer:
                     "state": room.engine.get_state(),
                 })
 
-    # -- handlers: gameplay -------------------------------------------------
     def _h_play_card(self, sess, payload):
         room = sess.room
         if not room or not room.engine:
             return
         member = room.get_member(sess.user_id)
-        # validasi role (spectator tidak boleh aksi)
         if member and member.role == PlayerRole.SPECTATOR:
             sess.send(S2C.ACTION_REJECTED, {"reason": RejectReason.SPECTATOR_CANNOT_ACT})
             return
@@ -292,7 +270,6 @@ class SocketServer:
             effect = room.engine.play_cards(sess.user_id, cards)
             logger.activity(sess.user_id, "PLAY_CARDS", effect)
 
-        # cek pemenang
         player = room.engine.get_player(sess.user_id)
         if player and player.has_won:
             if member:
@@ -319,22 +296,18 @@ class SocketServer:
         result = room.engine.draw_card(sess.user_id)
 
         if result is None:
-            # Sudah menarik kartu di giliran ini -> tolak draw kedua.
             sess.send(S2C.ACTION_REJECTED, {"reason": RejectReason.ALREADY_DREW})
             return
 
         logger.activity(sess.user_id, "DRAW_CARD", {})
 
         if isinstance(result, list):
-            # Stacked draw: pemain mengambil semua akumulasi, giliran sudah di-skip oleh engine
             sess.send(S2C.DRAW_STACK_RESULT, {
                 "cards": [c.to_dict() for c in result],
                 "count": len(result),
             })
         elif isinstance(result, Card):
-            # Draw biasa 1 kartu
             sess.send(S2C.DRAW_RESULT, {"card": result.to_dict()})
-            # jika kartu hasil draw tidak bisa dimainkan -> auto pass
             st = room.engine.get_state()
             top = Card.from_dict(st["top_card"])
             if not result.matches(top, st["active_color"]):
@@ -350,24 +323,19 @@ class SocketServer:
         ok, action, target_uid, penalty = room.engine.call_uno(sess.user_id, mode)
 
         if action == "noop":
-            # Tombol UNO ditekan saat belum waktunya — tidak ada efek.
             return
 
         if action == "self_call":
-            # Pemain berhasil memanggil UNO untuk dirinya sendiri
             sess.send(S2C.UNO_OK, {})
             self._broadcast_room(room, S2C.UNO_ANNOUNCE, {"user_id": sess.user_id})
 
         elif action == "catch":
-            # Pemain menangkap lawan yang lupa call UNO
-            # Kirim penalti ke pemain yang tertangkap
             caught_sess = self._sess_of(target_uid, room)
             if caught_sess:
                 caught_sess.send(S2C.UNO_PENALTY, {
                     "cards": [c.to_dict() for c in penalty],
                     "reason": "caught",
                 })
-            # Beritahu semua pemain tentang tangkapan UNO
             caught_name = ""
             for p in room.engine.players:
                 if p.user_id == target_uid:
@@ -381,7 +349,6 @@ class SocketServer:
             self._broadcast_state(room)
 
         elif action == "false_call":
-            # Pemanggil kena penalti karena call UNO sembarangan
             sess.send(S2C.UNO_PENALTY, {
                 "cards": [c.to_dict() for c in penalty],
                 "reason": "false_call",
@@ -396,7 +363,6 @@ class SocketServer:
         self._leave_room(sess)
         sess.send(S2C.LEFT_ROOM, {})
 
-    # -- handlers: reconnect ------------------------------------------------
     def _h_reconnect(self, sess, payload):
         token = payload.get("token", "")
         room_id = payload.get("room_id", "")
@@ -412,7 +378,6 @@ class SocketServer:
         if not member:
             sess.send(S2C.ACTION_REJECTED, {"reason": "not_in_room"})
             return
-        # rebind koneksi
         sess.user_id = user_id
         sess.username = member.username
         sess.room = room
@@ -429,7 +394,6 @@ class SocketServer:
         })
         self._broadcast_state(room)
 
-    # -- handlers: leaderboard/stats ---------------------------------------
     def _h_get_leaderboard(self, sess, payload):
         limit = int(payload.get("limit", 10))
         sess.send(S2C.LEADERBOARD, {"entries": leaderboard_service.get_leaderboard(limit)})
@@ -449,7 +413,6 @@ class SocketServer:
             "entries": leaderboard_service.get_match_history(uid, limit),
         })
 
-    # -- akhir match --------------------------------------------------------
     def _finish_match(self, room):
         if room.status == RoomStatus.FINISHED:
             return
@@ -460,11 +423,8 @@ class SocketServer:
         result_map = leaderboard_service.process_match_result(
             room.room_id, finish_order, players, room.match_mode, ranking_details
         )
-        # Konversi key ke string untuk konsistensi JSON serialization
         result_map_str = {str(k): v for k, v in result_map.items()}
-        # Sertakan nama pemain agar client tidak perlu bergantung pada game_state
         player_names = {str(uid): uname for uid, uname in players}
-        # kirim hasil ke semua member (player + spectator)
         payload = {
             "finish_order": finish_order,
             "ranking_details": ranking_details,
@@ -481,7 +441,6 @@ class SocketServer:
             "ranking": finish_order,
         })
 
-    # -- broadcast helpers --------------------------------------------------
     def _broadcast_room(self, room, ptype: str, payload: dict):
         for m in list(room.members):
             s = self._sess_of(m.user_id, room)
@@ -496,7 +455,6 @@ class SocketServer:
             s = self._sess_of(m.user_id, room)
             if not s or not m.connected:
                 continue
-            # player menerima tangannya sendiri; spectator hanya state
             data = {"state": state}
             if m.role == PlayerRole.PLAYER:
                 data["hand"] = room.engine.get_hand(m.user_id)
@@ -536,7 +494,6 @@ class SocketServer:
         return None
 
     def _takeover_playing_session(self, new_sess: ClientSession) -> dict | None:
-        """Pindahkan kontrol match dari session lama ke session login baru."""
         old_sessions = [
             s for s in self._sessions_of(new_sess.user_id)
             if s is not new_sess
@@ -558,7 +515,6 @@ class SocketServer:
         member.disconnect_at = None
         new_sess.room = room
 
-        # Putuskan sesi lama tanpa memanggil _leave_room, supaya player tidak kalah.
         old.room = None
         logger.activity(new_sess.user_id, "SESSION_TAKEOVER", {"room_id": room.room_id})
         old.send(S2C.FORCE_LOGOUT, {
@@ -590,7 +546,6 @@ class SocketServer:
         }
 
     def _resume_disconnected_session(self, sess: ClientSession) -> dict | None:
-        """Resume a playing room after browser refresh or short network drop."""
         for room in list(self.rm.rooms.values()):
             if room.status != RoomStatus.PLAYING or not room.engine:
                 continue
@@ -606,7 +561,6 @@ class SocketServer:
             return self._resume_payload(room, member)
         return None
 
-    # -- disconnect & reconnect grace --------------------------------------
     def _on_disconnect(self, sess: ClientSession):
         if not sess.user_id:
             return
@@ -620,7 +574,6 @@ class SocketServer:
                 if room.status == RoomStatus.PLAYING and room.engine:
                     self._broadcast_state(room)
                 elif room.status == RoomStatus.WAITING:
-                    # di lobby, langsung keluarkan
                     self._leave_room(sess)
         self._unregister_session(sess)
 
@@ -644,7 +597,6 @@ class SocketServer:
                 self._finish_match(room)
 
     def _reconnect_reaper(self):
-        """Thread: keluarkan pemain yang melewati grace period reconnect."""
         while self._running:
             time.sleep(2)
             now = time.time()

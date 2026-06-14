@@ -1,4 +1,3 @@
-"""ResultScene — hasil akhir match, desain premium."""
 import math
 import pygame
 
@@ -13,7 +12,6 @@ from client.ui.widgets import (
 )
 from client.ui import sounds
 
-
 class ResultScene(Scene):
     def __init__(self, app):
         super().__init__(app)
@@ -25,7 +23,6 @@ class ResultScene(Scene):
     def on_enter(self):
         if self.state.voice:
             self.state.voice.leave()
-        # Hentikan musik in-game, mainkan jingle menang/kalah sesuai peringkat.
         sounds.stop_music()
         res = self.state.last_result or {}
         finish_order = res.get("finish_order", [])
@@ -68,7 +65,6 @@ class ResultScene(Scene):
 
         cx = config.WINDOW_WIDTH // 2
 
-        # Apakah saya menang?
         my_pos = None
         for pos, uid in enumerate(finish_order, 1):
             if uid == self.state.user_id:
@@ -77,7 +73,6 @@ class ResultScene(Scene):
         if my_pos == 1:
             title = "🏆  ANDA MENANG!"
             tcol = Palette.GOLD
-            # Confetti particles
             draw_particles(surf, self._tick, count=50,
                            color=(218, 180, 56))
             draw_particles(surf, self._tick + 500, count=30,
@@ -104,14 +99,11 @@ class ResultScene(Scene):
         draw_text(surf, mode_label, (cx, 126), 14, Palette.BG,
                   bold=True, center=True)
 
-        # Peringkat akhir header
         draw_text(surf, "Peringkat Akhir", (cx, 160), 22,
                   Palette.TEXT_DIM, center=True)
 
-        # Tabel hasil
         y = 205
 
-        # Panel background
         panel_h = len(finish_order) * 62 + 20
         panel_rect = (cx - 340, y - 10, 680, panel_h)
         draw_shadow_rect(surf, panel_rect, offset=5, alpha=40, border_radius=16)
@@ -119,7 +111,6 @@ class ResultScene(Scene):
                            border_radius=16)
         pygame.draw.rect(surf, Palette.PANEL_BORDER, panel_rect, 1, border_radius=16)
 
-        # Gunakan player_names dari payload, fallback ke game_state
         names = res.get("player_names", {})
         if not names:
             names = {str(pl["user_id"]): pl["username"]
@@ -135,7 +126,6 @@ class ResultScene(Scene):
             remaining_value = r.get("remaining_value", detail.get("remaining_value", 0))
             me = uid == self.state.user_id
 
-            # Row card
             row_rect = (cx - 320, y, 640, 50)
 
             if me:
@@ -146,7 +136,6 @@ class ResultScene(Scene):
                 draw_gradient_rect(surf, row_rect, (34, 38, 56), (26, 30, 44),
                                    border_radius=10)
 
-            # Position medal
             medal_colors = {1: Palette.GOLD, 2: (195, 200, 215), 3: (186, 150, 95)}
             medal_col = medal_colors.get(pos, Palette.TEXT_DIM)
             medal_x = cx - 300
@@ -154,7 +143,6 @@ class ResultScene(Scene):
             draw_text(surf, str(pos), (medal_x + 12, y + 25), 16,
                       Palette.BG, bold=True, center=True)
 
-            # Name
             draw_text(surf, name, (medal_x + 40, y + 14), 20, Palette.TEXT, bold=me)
             draw_text(surf, f"Value sisa: {remaining_value}", (medal_x + 40, y + 34),
                       12, Palette.TEXT_MUTED)
@@ -162,7 +150,6 @@ class ResultScene(Scene):
                 draw_text(surf, "[Anda]", (medal_x + 40 + len(name) * 11, y + 16), 14,
                           Palette.GOLD)
 
-            # Point change
             if is_ranked:
                 dcol = Palette.GREEN if delta > 0 else (Palette.ACCENT if delta < 0 else Palette.TEXT_DIM)
                 delta_text = f"+{delta}" if delta > 0 else str(delta)
@@ -171,7 +158,6 @@ class ResultScene(Scene):
                 delta_text = "Classic"
             draw_text(surf, delta_text, (cx + 140, y + 14), 20, dcol, bold=True)
 
-            # Total & rank
             rank_col = Palette.RANK_COLORS.get(tier, Palette.TEXT_DIM)
             draw_text(surf, f"{total} pts", (cx + 220, y + 10), 16, Palette.TEXT_DIM)
             if tier:

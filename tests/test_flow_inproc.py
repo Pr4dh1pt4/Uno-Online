@@ -1,8 +1,6 @@
-"""Test alur lengkap in-process (tanpa socket nyata) — cepat & deterministik."""
 import sys, os, threading, sqlite3, types
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# shim DB sqlite in-memory
 if "mysql.connector" not in sys.modules:
     mysql_mod = types.ModuleType("mysql")
     connector_mod = types.ModuleType("mysql.connector")
@@ -48,7 +46,6 @@ from shared.constants import (
 )
 import random
 
-# Register & login
 ok,uid_a=auth_service.register("andi","1234"); assert ok
 ok,uid_b=auth_service.register("budi","1234"); assert ok
 ok,uid_c=auth_service.register("citra","1234"); assert ok
@@ -56,7 +53,6 @@ ok,res=auth_service.login("andi","1234"); assert ok and res["token"]
 assert auth_service.validate_token(res["token"])==uid_a
 print("Auth OK: register, login, token, password-hash")
 
-# Simulasi match 3 pemain via engine + proses leaderboard
 eng=GameEngine([(uid_a,"andi"),(uid_b,"budi"),(uid_c,"citra")],seed=3)
 rng=random.Random(2)
 for _ in range(2000):
@@ -89,13 +85,11 @@ assert before_classic==after_classic, "classic tidak boleh mengubah poin"
 assert all(r["point_change"]==0 and r["match_mode"]==MATCH_MODE_CLASSIC for r in classic_map.values())
 print("Classic match OK: hasil tersimpan, poin/rank tidak berubah")
 
-# Top global terurut poin
 top=leaderboard_service.get_top_global(10)
 pts=[t["total_point"] for t in top]
 assert pts==sorted(pts,reverse=True), "top global tidak terurut"
 print("Top global terurut by poin:",[(t['username'],t['total_point']) for t in top])
 
-# Stats
 stats=auth_service.get_stats(fo[0])
 assert stats["total_match"]==1
 print("Stats pemenang:",stats)

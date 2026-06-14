@@ -1,13 +1,3 @@
-"""
-Entry point client UNO Online (Pygame).
-
-Penggunaan:
-    python -m client.main_client
-    python -m client.main_client --server 192.168.1.10
-
-Scene manager memanggil handle_event/handle_packet/update/draw scene aktif.
-Paket jaringan dipoll tiap frame dan disebar ke scene aktif.
-"""
 import sys
 
 import pygame
@@ -25,7 +15,6 @@ from client.scenes.spectator_scene import SpectatorScene
 from client.scenes.result_scene import ResultScene
 from client.scenes.leaderboard_scene import LeaderboardScene
 
-
 class ClientApp:
     def __init__(self, host: str):
         pygame.init()
@@ -35,7 +24,6 @@ class ClientApp:
         self.screen = pygame.display.set_mode((config.WINDOW_WIDTH, config.WINDOW_HEIGHT))
         self.clock = pygame.time.Clock()
 
-        # Inisialisasi audio SFX + musik latar
         from client.ui import sounds
         sounds.init()
         sounds.play_music("lobby")
@@ -71,9 +59,7 @@ class ClientApp:
                 else:
                     self.current.handle_event(event)
 
-            # distribusi paket jaringan ke scene aktif
             for pkt in self.net.poll():
-                # Handle FORCE_LOGOUT globally — di scene manapun
                 if pkt.get("type") == S2C.FORCE_LOGOUT:
                     self.state.user_id = None
                     self.state.username = None
@@ -84,7 +70,6 @@ class ClientApp:
                     self.state.is_spectator = False
                     self.state.match_mode = "ranked"
                     self.voice.leave()
-                    # Pass to login scene for message display
                     self.change_scene("login")
                     self.current.handle_packet(pkt)
                     continue
@@ -112,7 +97,6 @@ class ClientApp:
                   (config.WINDOW_WIDTH // 2, config.WINDOW_HEIGHT - 21), 16,
                   (255, 255, 255), center=True)
 
-
 def main():
     host = config.CLIENT_CONNECT_HOST
     if "--server" in sys.argv:
@@ -125,7 +109,6 @@ def main():
         print(f"Gagal terhubung ke server {host}:{config.SERVER_PORT}. "
               f"Pastikan server berjalan.")
     app.run()
-
 
 if __name__ == "__main__":
     main()

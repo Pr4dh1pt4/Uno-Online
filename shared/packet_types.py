@@ -1,11 +1,4 @@
-"""
-Definisi tipe paket komunikasi jaringan (client <-> server).
-Semua paket berupa JSON dengan struktur: {type, seq, ts, payload}.
-"""
-
-
 class C2S:
-    """Client to Server."""
     REGISTER_REQ = "REGISTER_REQ"
     LOGIN_REQ = "LOGIN_REQ"
     SESSION_LOGIN_REQ = "SESSION_LOGIN_REQ"
@@ -24,9 +17,7 @@ class C2S:
     GET_TOP_GLOBAL = "GET_TOP_GLOBAL"
     GET_MATCH_HISTORY = "GET_MATCH_HISTORY"
 
-
 class S2C:
-    """Server to Client."""
     REGISTER_OK = "REGISTER_OK"
     REGISTER_FAIL = "REGISTER_FAIL"
     LOGIN_OK = "LOGIN_OK"
@@ -58,8 +49,6 @@ class S2C:
     UNO_CATCH = "UNO_CATCH"
     ERROR = "ERROR"
 
-
-# Alasan penolakan (untuk ACTION_REJECTED)
 class RejectReason:
     NOT_YOUR_TURN = "not_your_turn"
     INVALID_CARD = "invalid_card"

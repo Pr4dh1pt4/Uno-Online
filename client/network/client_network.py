@@ -1,9 +1,3 @@
-"""
-ClientNetwork — koneksi TCP ke server dengan thread receiver.
-
-Paket masuk dimasukkan ke queue thread-safe agar bisa dikonsumsi oleh
-game loop Pygame tanpa blocking. Ping diukur lewat PING/PONG.
-"""
 import socket
 import threading
 import time
@@ -13,7 +7,6 @@ import config
 from shared import protocol
 from shared.protocol import ProtocolError
 from shared.packet_types import C2S, S2C
-
 
 class ClientNetwork:
     def __init__(self):
@@ -62,7 +55,6 @@ class ClientNetwork:
                 break
             if pkt is None:
                 break
-            # tangani PONG di sini untuk update ping
             if pkt.get("type") == S2C.PONG:
                 cts = pkt["payload"].get("client_ts")
                 if cts:
@@ -78,7 +70,6 @@ class ClientNetwork:
             time.sleep(config.PING_INTERVAL_SECONDS if hasattr(config, "PING_INTERVAL_SECONDS") else 2)
 
     def poll(self) -> list[dict]:
-        """Ambil semua paket yang sudah masuk (dipanggil tiap frame)."""
         out = []
         while not self.inbox.empty():
             try:

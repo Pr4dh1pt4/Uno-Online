@@ -1,9 +1,3 @@
-"""
-Lapisan akses database MariaDB.
-
-Menggunakan mysql-connector-python (pure Python, mudah di-install).
-Connection pool dipakai agar aman untuk akses multi-thread dari server.
-"""
 import threading
 
 import mysql.connector
@@ -14,9 +8,7 @@ import config
 _pool: pooling.MySQLConnectionPool | None = None
 _pool_lock = threading.Lock()
 
-
 def init_pool() -> None:
-    """Inisialisasi connection pool (idempoten)."""
     global _pool
     with _pool_lock:
         if _pool is not None:
@@ -33,15 +25,12 @@ def init_pool() -> None:
             autocommit=False,
         )
 
-
 def get_conn():
     if _pool is None:
         init_pool()
     return _pool.get_connection()
 
-
 def execute(query: str, params: tuple = (), *, commit: bool = False):
-    """Jalankan query non-select. Return lastrowid."""
     conn = get_conn()
     try:
         cur = conn.cursor()
@@ -54,7 +43,6 @@ def execute(query: str, params: tuple = (), *, commit: bool = False):
     finally:
         conn.close()
 
-
 def query_one(query: str, params: tuple = ()) -> dict | None:
     conn = get_conn()
     try:
@@ -65,7 +53,6 @@ def query_one(query: str, params: tuple = ()) -> dict | None:
         return row
     finally:
         conn.close()
-
 
 def query_all(query: str, params: tuple = ()) -> list[dict]:
     conn = get_conn()
@@ -78,18 +65,12 @@ def query_all(query: str, params: tuple = ()) -> list[dict]:
     finally:
         conn.close()
 
-
 def init_schema() -> None:
-    """
-    Buat database & tabel dari schema.sql.
-    Dipanggil saat server start agar tidak perlu langkah manual.
-    """
     import os
     schema_path = os.path.join(os.path.dirname(__file__), "schema.sql")
     with open(schema_path, encoding="utf-8") as f:
         sql = f.read()
 
-    # Koneksi tanpa database dulu (untuk CREATE DATABASE)
     conn = mysql.connector.connect(
         host=config.DB_HOST, port=config.DB_PORT,
         user=config.DB_USER, password=config.DB_PASSWORD,
@@ -108,18 +89,14 @@ def init_schema() -> None:
     cur.close()
     conn.close()
 
-
 def _split_statements(sql: str) -> list[str]:
-    """Pisahkan statement SQL sederhana berdasarkan ';' (cukup untuk schema ini)."""
     cleaned = "\n".join(
         line for line in sql.splitlines()
         if not line.lstrip().startswith("--")
     )
     return [s for s in cleaned.split(";") if s.strip()]
 
-
 def ensure_runtime_schema() -> None:
-    """Tambahkan kolom ringan yang mungkin belum ada pada database lama."""
     conn = get_conn()
     try:
         cur = conn.cursor()
@@ -128,7 +105,6 @@ def ensure_runtime_schema() -> None:
         cur.close()
     finally:
         conn.close()
-
 
 def _apply_migrations(cur) -> None:
     migrations = [
@@ -143,9 +119,7 @@ def _apply_migrations(cur) -> None:
                 continue
             raise
 
-
 def _is_ignorable_schema_error(error: Exception) -> bool:
-    """Allow repeated init_schema runs against an existing database."""
     msg = str(error).lower()
     return (
         "duplicate key name" in msg

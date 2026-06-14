@@ -1,4 +1,3 @@
-"""Room: ruang tunggu — desain premium."""
 import math
 import pygame
 
@@ -12,7 +11,6 @@ from client.ui.widgets import (
     draw_glow, draw_particles,
 )
 from client.ui import sounds
-
 
 class RoomScene(Scene):
     def __init__(self, app):
@@ -98,12 +96,10 @@ class RoomScene(Scene):
 
         cx = config.WINDOW_WIDTH // 2
 
-        # Title
         draw_glow(surf, (cx, 60), 60, Palette.GOLD, intensity=0.4)
         draw_text(surf, "Ruang Tunggu", (cx, 60), 34, Palette.TEXT, bold=True,
                   center=True, shadow=True)
 
-        # Room code badge
         mode = self.state.match_mode or MATCH_MODE_RANKED
         mode_label = "RANKED" if mode == MATCH_MODE_RANKED else "CLASSIC"
         mode_col = Palette.GOLD if mode == MATCH_MODE_RANKED else Palette.BLUE
@@ -122,7 +118,6 @@ class RoomScene(Scene):
         draw_text(surf, mode_label, (cx + 95, 121), 17,
                   Palette.BG, bold=True, center=True)
 
-        # Player count
         player_count = len(self.state.players)
         draw_text(surf, f"Pemain ({player_count}/{MAX_PLAYERS})",
                   (cx, 165), 18, Palette.TEXT_DIM, center=True)
@@ -136,14 +131,12 @@ class RoomScene(Scene):
             draw_text(surf, self.state.voice.status, (160, 40), 13,
                       Palette.TEXT_MUTED)
 
-        # Player cards
         y = 200
         for i, m in enumerate(self.state.players):
             is_host = m["user_id"] == self.state.host_id
             is_me = m["user_id"] == self.state.user_id
             connected = m.get("connected", True)
 
-            # Card
             card_rect = (cx - 210, y, 420, 58)
             draw_shadow_rect(surf, card_rect, offset=3, alpha=35, border_radius=12)
 
@@ -157,18 +150,15 @@ class RoomScene(Scene):
                 pygame.draw.rect(surf, Palette.PANEL_BORDER, card_rect, 1,
                                  border_radius=12)
 
-            # Avatar circle
             avatar_col = Palette.GREEN if connected else Palette.TEXT_MUTED
             pygame.draw.circle(surf, avatar_col, (cx - 180, y + 29), 16)
             draw_text(surf, m["username"][0].upper(), (cx - 180, y + 29), 16,
                       Palette.BG, bold=True, center=True)
 
-            # Name
             col = Palette.TEXT if connected else Palette.TEXT_DIM
             label = m["username"]
             draw_text(surf, label, (cx - 155, y + 17), 20, col, bold=is_me)
 
-            # Badges
             badge_x = cx + 100
             if is_host:
                 badge_r = pygame.Rect(badge_x, y + 16, 56, 24)
@@ -188,13 +178,10 @@ class RoomScene(Scene):
 
             y += 70
 
-        # Empty slots
         for j in range(player_count, MAX_PLAYERS):
             card_rect = (cx - 210, y, 420, 58)
-            # Dashed outline effect
             pygame.draw.rect(surf, Palette.PANEL_BORDER, card_rect, 1,
                              border_radius=12)
-            # Pulsing dots for waiting
             dot_alpha = int(128 + 127 * math.sin(self._tick * 0.05 + j))
             ds = pygame.Surface((420, 58), pygame.SRCALPHA)
             draw_text(ds, "Menunggu pemain...", (210, 29), 16,
@@ -202,13 +189,11 @@ class RoomScene(Scene):
             surf.blit(ds, (cx - 210, y))
             y += 70
 
-        # Buttons
         self.btn_leave.draw(surf)
         if self._is_host():
             self.btn_start.enabled = player_count >= MIN_PLAYERS
             self.btn_start.draw(surf)
         else:
-            # Waiting indicator with pulse
             alpha = int(180 + 75 * math.sin(self._tick * 0.06))
             ws = pygame.Surface((config.WINDOW_WIDTH, 30), pygame.SRCALPHA)
             draw_text(ws, "Menunggu host memulai match...",

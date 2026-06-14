@@ -1,9 +1,3 @@
-"""HTTP static server + WebSocket gateway for the browser client.
-
-Browser clients cannot open raw TCP sockets, so this gateway exposes a small
-WebSocket endpoint and translates JSON messages to the existing TCP game
-protocol. The authoritative game server stays unchanged.
-"""
 import base64
 import hashlib
 import json
@@ -30,13 +24,10 @@ ASSET_DIR = Path(__file__).resolve().parent.parent / "client" / "assets"
 
 _WS_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
-
 class WebSocketClosed(Exception):
     pass
 
-
 class BrowserVoiceHub:
-    """Web voice signaling and legacy PCM relay for browser clients."""
 
     def __init__(self):
         self.lock = threading.Lock()
@@ -220,7 +211,6 @@ class BrowserVoiceHub:
             },
         })
 
-
 class WebGateway:
     def __init__(self):
         self.voice = BrowserVoiceHub()
@@ -288,8 +278,6 @@ class WebGateway:
             return
         body = target.read_bytes()
         ctype = mimetypes.guess_type(str(target))[0] or "application/octet-stream"
-        # Aset (gambar/suara) boleh di-cache lama; HTML/JS/CSS selalu
-        # divalidasi ulang supaya update langsung terlihat tanpa hard refresh.
         cache = "public, max-age=86400" if clean.startswith("assets/") else "no-cache"
         self._http_response(conn, 200, body, ctype, cache)
 
@@ -370,7 +358,6 @@ class WebGateway:
         finally:
             stop.set()
 
-
 def _recv_exact(sock, n: int) -> bytes:
     buf = bytearray()
     while len(buf) < n:
@@ -379,7 +366,6 @@ def _recv_exact(sock, n: int) -> bytes:
             raise WebSocketClosed()
         buf.extend(chunk)
     return bytes(buf)
-
 
 def ws_recv_text(sock) -> str:
     b1, b2 = _recv_exact(sock, 2)
@@ -401,7 +387,6 @@ def ws_recv_text(sock) -> str:
         return ""
     return payload.decode("utf-8")
 
-
 def ws_send_text(sock, text: str) -> None:
     data = text.encode("utf-8")
     header = bytearray([0x81])
@@ -415,15 +400,12 @@ def ws_send_text(sock, text: str) -> None:
         header.extend(struct.pack(">Q", len(data)))
     sock.sendall(bytes(header) + data)
 
-
 def safe_ws_send(sock, lock: threading.Lock, pkt: dict) -> None:
     with lock:
         ws_send_text(sock, json.dumps(pkt, separators=(",", ":")))
 
-
 def main():
     WebGateway().start()
-
 
 if __name__ == "__main__":
     main()

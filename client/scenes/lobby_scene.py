@@ -1,4 +1,3 @@
-"""Lobby: menu utama — desain premium."""
 import pygame
 
 import config
@@ -11,7 +10,6 @@ from client.ui.widgets import (
     draw_glow, draw_particles,
 )
 from client.ui import sounds
-
 
 class LobbyScene(Scene):
     def __init__(self, app):
@@ -100,14 +98,11 @@ class LobbyScene(Scene):
         self.go("login")
 
     def handle_event(self, event):
-        # Catat status fokus field kode SEBELUM TextInput memprosesnya, karena
-        # menekan Enter membuat field menjadi tidak aktif di dalam handle().
         join_active = self.join_input.active
         for w in (self.btn_ranked, self.btn_classic, self.btn_quick,
                   self.btn_create, self.join_input,
                   self.btn_join, self.btn_board, self.btn_history, self.btn_logout):
             w.handle(event)
-        # Enter saat mengetik kode room langsung mencoba gabung (paritas dengan web).
         if (event.type == pygame.KEYDOWN and event.key in (pygame.K_RETURN, pygame.K_KP_ENTER)
                 and join_active):
             self._join()
@@ -144,7 +139,6 @@ class LobbyScene(Scene):
         cx = config.WINDOW_WIDTH // 2
         s = self.state.stats or {}
 
-        # ---- Header: welcome + stats dashboard ----
         rank = s.get("rank_tier", "Bronze")
         rank_col = Palette.RANK_COLORS.get(rank, Palette.TEXT)
         pts = s.get("total_point", 0)
@@ -152,7 +146,6 @@ class LobbyScene(Scene):
         wins = s.get("total_win", 0)
         wr = round(s.get("win_rate", 0) * 100)
 
-        # 1. Profile Panel
         profile_rect = (40, 30, 320, 85)
         draw_shadow_rect(surf, profile_rect, offset=4, alpha=40, border_radius=14)
         draw_gradient_rect(surf, profile_rect, (32, 36, 55), (24, 28, 42), border_radius=14)
@@ -167,7 +160,6 @@ class LobbyScene(Scene):
         draw_text(surf, rank, (230 + 42.5, 59 + 12), 12, Palette.TEXT,
                   bold=True, center=True)
 
-        # 2. Stats Dashboard Cards
         stats_data = [
             ("TOTAL POIN", f"{pts} pts", Palette.GOLD),
             ("TOTAL MATCH", str(matches), Palette.TEXT),
@@ -181,22 +173,17 @@ class LobbyScene(Scene):
             draw_shadow_rect(surf, card_rect, offset=4, alpha=40, border_radius=14)
             draw_gradient_rect(surf, card_rect, (32, 36, 55), (24, 28, 42), border_radius=14)
             pygame.draw.rect(surf, Palette.PANEL_BORDER, card_rect, 1, border_radius=14)
-            
-            # Subtitle
+
             draw_text(surf, title, (x + 100, 50), 12, Palette.TEXT_DIM, bold=True, center=True)
-            # Value
             draw_text(surf, value, (x + 100, 76), 20, val_color, bold=True, center=True)
 
-        # Ping
         draw_text(surf, f"Ping: {self.state.net.ping_ms} ms",
                   (config.WINDOW_WIDTH - 150, 12), 13, Palette.TEXT_MUTED)
 
-        # ---- Title ----
         draw_glow(surf, (cx, 198), 60, Palette.GOLD, intensity=0.4)
         draw_text(surf, "Lobby", (cx, 198), 36, Palette.TEXT, bold=True,
                   center=True, shadow=True)
 
-        # ---- Action panel ----
         panel_rect = (cx - 200, 238, 400, 430)
         draw_shadow_rect(surf, panel_rect, offset=5, alpha=40, border_radius=16)
         draw_gradient_rect(surf, panel_rect, (30, 34, 52), (22, 26, 40),

@@ -1,11 +1,7 @@
--- Skema database UNO Online untuk MariaDB / MySQL.
--- Jalankan: mysql -u root -p < schema.sql  (atau via init di database.py)
-
 CREATE DATABASE IF NOT EXISTS uno_online
     CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE uno_online;
 
--- USERS ---------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS users (
     user_id       INT AUTO_INCREMENT PRIMARY KEY,
     username      VARCHAR(32) NOT NULL UNIQUE,
@@ -13,7 +9,6 @@ CREATE TABLE IF NOT EXISTS users (
     created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
--- LEADERBOARD (1:1 dengan users) -------------------------------------------
 CREATE TABLE IF NOT EXISTS leaderboard (
     user_id     INT PRIMARY KEY,
     total_match INT DEFAULT 0,
@@ -26,7 +21,6 @@ CREATE TABLE IF NOT EXISTS leaderboard (
     CONSTRAINT fk_lb_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
--- ROOMS ---------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS rooms (
     room_id    VARCHAR(36) PRIMARY KEY,
     room_code  VARCHAR(8) NOT NULL UNIQUE,
@@ -36,7 +30,6 @@ CREATE TABLE IF NOT EXISTS rooms (
     CONSTRAINT fk_room_host FOREIGN KEY (host_id) REFERENCES users(user_id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
--- MATCHES -------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS matches (
     match_id     INT AUTO_INCREMENT PRIMARY KEY,
     room_id      VARCHAR(36),
@@ -47,7 +40,6 @@ CREATE TABLE IF NOT EXISTS matches (
     ended_at     TIMESTAMP NULL
 ) ENGINE=InnoDB;
 
--- MATCH_PLAYERS -------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS match_players (
     id              INT AUTO_INCREMENT PRIMARY KEY,
     match_id        INT NOT NULL,
@@ -59,7 +51,6 @@ CREATE TABLE IF NOT EXISTS match_players (
     CONSTRAINT fk_mp_user  FOREIGN KEY (user_id)  REFERENCES users(user_id)   ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
--- ACTIVITY_LOG --------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS activity_log (
     log_id     INT AUTO_INCREMENT PRIMARY KEY,
     user_id    INT,
@@ -68,7 +59,6 @@ CREATE TABLE IF NOT EXISTS activity_log (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
--- SESSIONS ------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS sessions (
     token      VARCHAR(64) PRIMARY KEY,
     user_id    INT NOT NULL,
@@ -76,7 +66,6 @@ CREATE TABLE IF NOT EXISTS sessions (
     CONSTRAINT fk_sess_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
--- INDEX ---------------------------------------------------------------------
 CREATE INDEX idx_leaderboard_point ON leaderboard(total_point DESC);
 CREATE INDEX idx_match_players_user ON match_players(user_id);
 CREATE INDEX idx_activity_user ON activity_log(user_id, created_at);

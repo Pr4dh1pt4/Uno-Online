@@ -1,7 +1,3 @@
-"""
-Layanan autentikasi: register, login, dan manajemen sesi/token.
-Password di-hash dengan bcrypt (tidak pernah disimpan plaintext).
-"""
 import secrets
 from datetime import datetime, timedelta
 
@@ -10,9 +6,7 @@ import bcrypt
 import config
 from server.db import database
 
-
 def register(username: str, password: str) -> tuple[bool, str | int]:
-    """Return (True, user_id) atau (False, reason)."""
     username = (username or "").strip()
     if not (3 <= len(username) <= 32):
         return False, "username_length"
@@ -30,15 +24,12 @@ def register(username: str, password: str) -> tuple[bool, str | int]:
         "INSERT INTO users (username, password_hash) VALUES (%s, %s)",
         (username, pw_hash), commit=True,
     )
-    # buat baris leaderboard awal
     database.execute(
         "INSERT INTO leaderboard (user_id) VALUES (%s)", (user_id,), commit=True
     )
     return True, user_id
 
-
 def login(username: str, password: str) -> tuple[bool, dict | str]:
-    """Return (True, {user_id, username, token, stats}) atau (False, reason)."""
     row = database.query_one(
         "SELECT user_id, username, password_hash FROM users WHERE username = %s",
         (username or "",),
@@ -57,7 +48,6 @@ def login(username: str, password: str) -> tuple[bool, dict | str]:
         "stats": stats,
     }
 
-
 def _create_session(user_id: int) -> str:
     token = secrets.token_hex(32)
     expires = _session_expiry()
@@ -67,10 +57,8 @@ def _create_session(user_id: int) -> str:
     )
     return token
 
-
 def _session_expiry() -> datetime:
     return datetime.now() + timedelta(hours=config.SESSION_TTL_HOURS)
-
 
 def _extend_session(token: str) -> None:
     database.execute(
@@ -78,9 +66,7 @@ def _extend_session(token: str) -> None:
         (_session_expiry(), token or ""), commit=True,
     )
 
-
 def validate_token(token: str) -> int | None:
-    """Return user_id jika token valid & belum kedaluwarsa, else None."""
     row = database.query_one(
         "SELECT user_id FROM sessions WHERE token = %s AND expires_at >= NOW()",
         (token or "",),
@@ -90,9 +76,7 @@ def validate_token(token: str) -> int | None:
     _extend_session(token)
     return row["user_id"]
 
-
 def login_with_token(token: str) -> tuple[bool, dict | str]:
-    """Return session user data if token is valid."""
     row = database.query_one(
         "SELECT u.user_id, u.username "
         "FROM sessions s JOIN users u ON u.user_id = s.user_id "
@@ -108,7 +92,6 @@ def login_with_token(token: str) -> tuple[bool, dict | str]:
         "token": token,
         "stats": get_stats(row["user_id"]),
     }
-
 
 def get_stats(user_id: int) -> dict:
     row = database.query_one(

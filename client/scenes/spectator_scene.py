@@ -1,6 +1,3 @@
-"""
-SpectatorScene — pemain yang sudah menang menonton match, desain premium.
-"""
 import pygame
 
 import config
@@ -12,7 +9,6 @@ from client.ui.widgets import (
 )
 from client.ui import assets
 from client.ui import sounds
-
 
 class SpectatorScene(Scene):
     def __init__(self, app):
@@ -86,13 +82,11 @@ class SpectatorScene(Scene):
                 b = int(28 + t * 15)
                 pygame.draw.line(surf, (r, g, b), (0, y), (config.WINDOW_WIDTH, y))
 
-        # Banner mode penonton
         banner_surf = pygame.Surface((config.WINDOW_WIDTH, 50), pygame.SRCALPHA)
         draw_gradient_rect(banner_surf, (0, 0, config.WINDOW_WIDTH, 50),
                            (0, 0, 0, 160), (0, 0, 0, 60))
         surf.blit(banner_surf, (0, 0))
 
-        # Animasi ikon mata
         import math
         pulse = 0.7 + 0.3 * math.sin(self._tick * 0.06)
         alpha = int(200 * pulse)
@@ -111,7 +105,6 @@ class SpectatorScene(Scene):
         from server.core.card import Card
         cx, cy = config.WINDOW_WIDTH // 2, config.WINDOW_HEIGHT // 2
 
-        # Kartu teratas
         top = gs.get("top_card")
         if top:
             draw_shadow_rect(surf, (cx - config.CARD_W // 2, cy - config.CARD_H // 2,
@@ -120,7 +113,6 @@ class SpectatorScene(Scene):
             surf.blit(assets.card_surface(Card.from_dict(top).asset_name),
                       (cx - config.CARD_W // 2, cy - config.CARD_H // 2))
 
-        # Warna aktif
         ac = gs.get("active_color")
         if ac and ac in Palette.UNO_COLORS:
             ix = cx + config.CARD_W // 2 + 40
@@ -128,7 +120,6 @@ class SpectatorScene(Scene):
             pygame.draw.circle(surf, Palette.UNO_COLORS[ac], (ix, cy), 16)
             pygame.draw.circle(surf, (255, 255, 255, 80), (ix, cy), 16, 2)
 
-        # Pending draw indicator
         pending = gs.get("pending_draw", 0)
         if pending > 0:
             pd_type = gs.get("pending_draw_type", "")
@@ -141,7 +132,6 @@ class SpectatorScene(Scene):
             draw_text(surf, f"+{pending}", (cx, pd_y), 18, Palette.TEXT,
                       bold=True, center=True)
 
-        # Pemain & jumlah kartu
         y = 100
         player_panel = (40, y - 10, 280, 40 + len(gs["players"]) * 36)
         draw_shadow_rect(surf, player_panel, offset=3, alpha=40, border_radius=12)
@@ -164,7 +154,6 @@ class SpectatorScene(Scene):
                       (55, y), 15, col)
             y += 32
 
-        # Scoreboard
         self._draw_scoreboard(surf, gs)
         draw_text(surf, f"Ping: {self.state.net.ping_ms} ms",
                   (20, config.WINDOW_HEIGHT - 30), 13, Palette.TEXT_MUTED)

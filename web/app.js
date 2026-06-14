@@ -99,8 +99,6 @@ const SFX_SRC = {
   leave: "/assets/sounds/leave.mp3",
 };
 const SFX_VOL = { click: 0.4, card: 0.7, plus: 0.7, win: 0.85, lose: 0.85, leave: 0.6 };
-// Pool kecil per efek: klik beruntun memakai elemen Audio berbeda secara
-// bergiliran, jadi suara tidak saling memotong dan terasa pas dengan tombol.
 const sfxPool = {};
 for (const name in SFX_SRC) {
   const nodes = Array.from({ length: 4 }, () => {
@@ -167,7 +165,6 @@ function bindEvents() {
       }
     });
   });
-  // Escape membatalkan pilih-warna Wild atau seleksi kartu yang sedang berjalan.
   document.addEventListener("keydown", (ev) => {
     if (ev.key !== "Escape") return;
     if (state.pendingWild) cancelWild();
@@ -324,8 +321,6 @@ function handlePacket(pkt) {
       state.game = payload.state || state.game;
       if (payload.hand) state.hand = payload.hand;
       pruneSelection();
-      // Giliran sudah berpindah ke lawan: buang seleksi & pemilih warna yang
-      // tertinggal supaya tidak ada aksi basi saat giliran kembali.
       if (!isMyTurn()) {
         clearSelection(false);
         cancelWild(false);
@@ -333,7 +328,6 @@ function handlePacket(pkt) {
       renderGame();
       break;
     case S2C.DRAW_RESULT:
-      // Klik tombol deck sudah memberi suara saat ditekan; jangan dobel di sini.
       if (payload.card) state.hand.push(payload.card);
       renderGame();
       break;
@@ -372,8 +366,6 @@ function handlePacket(pkt) {
       renderGame();
       break;
     case S2C.MATCH_RESULT: {
-      // Pemenang sudah mendengar "win" saat PLAYER_WIN; pemain posisi terakhir
-      // mendapat isyarat "lose" di sini.
       const details = payload.ranking_details || [];
       const mine = details.find((r) => r.user_id === state.userId);
       const lastPos = details.reduce((m, r) => Math.max(m, r.finish_position || 0), 0);
@@ -458,7 +450,6 @@ function renderStats() {
     stat("Point", st.total_point ?? 0),
     stat("Rank", st.rank_tier || "Bronze"),
     stat("Win", st.total_win ?? 0),
-    // win_rate dari server berupa pecahan 0..1 (total_win / total_match).
     stat("Win Rate", `${(Number(st.win_rate || 0) * 100).toFixed(1)}%`),
   ].join("");
 }
@@ -551,7 +542,7 @@ function renderGame() {
   els.playersBox.innerHTML = players.map((p) => `
     <div class="player-row${p.user_id === gs.current_turn && !gs.game_over ? " current" : ""}">
       <span>${escapeHtml(p.username)}${p.user_id === state.userId ? " (Anda)" : ""}</span>
-      <span class="badge">${p.hand_count} kartu | ${p.remaining_value} value${p.has_won ? " | Finish" : ""}</span>
+      <span class="badge">${p.hand_count} kartu${p.has_won ? " | Finish" : ""}</span>
     </div>
   `).join("");
 
@@ -560,10 +551,6 @@ function renderGame() {
   els.activeColor.textContent = activeColor || "-";
   els.activeColor.className = `color-pill${activeColor ? ` ${activeColor.toLowerCase()}` : ""}`;
   const pendingDraw = gs.pending_draw || 0;
-  // Boleh menarik bila giliran sendiri DAN (ada tumpukan +N yang wajib diambil,
-  // ATAU belum menarik di giliran ini). Setelah menarik 1 kartu, deck dimatikan
-  // supaya klik berulang tidak ditolak server ("already_drew") — inilah yang
-  // tadinya terasa seperti "tidak bisa mengambil kartu".
   els.drawBtn.disabled = !myTurn || (pendingDraw === 0 && !!gs.drawn_this_turn);
   els.unoBtn.disabled = !me || state.isSpectator;
   els.catchUnoBtn.disabled = state.isSpectator;
@@ -578,9 +565,6 @@ function renderGame() {
   state.hand.forEach((card, idx) => {
     const btn = document.createElement("button");
     const selected = state.selectedIndices.includes(idx);
-    // Sorot kartu yang sah dimainkan sekarang (terangkat + bingkai emas),
-    // sesuai aturan tampilan di README. Kartu lain tetap bisa diklik agar
-    // multi-play angka sama (yang tidak match top) tetap bisa dipilih.
     const playable = myTurn && isCardPlayable(card, gs);
     btn.className = `card${selected ? " selected" : ""}${playable ? " playable" : ""}`;
     btn.disabled = !myTurn;
@@ -595,8 +579,6 @@ function renderGame() {
   });
 }
 
-// Replika aturan kecocokan server (Card.matches) untuk menyorot kartu yang
-// bisa dimainkan. Saat ada tumpukan +N, hanya kartu +2/+4 yang boleh.
 function isCardPlayable(card, gs) {
   if (!card || !gs) return false;
   if ((gs.pending_draw || 0) > 0) {
@@ -745,7 +727,6 @@ function showView(id) {
   ["authView", "lobbyView", "roomView", "gameView", "resultView"].forEach((viewId) => {
     els[viewId].classList.toggle("hidden", viewId !== id);
   });
-  // Bersihkan sisa notifikasi dari view sebelumnya agar tidak menempel.
   setText(els.gameMsg, "");
   setText(els.roomMsg, "");
   setText(els.lobbyMsg, "");
@@ -766,7 +747,6 @@ function playSfx(name) {
   try {
     audio.currentTime = 0;
   } catch {
-    // currentTime bisa gagal sebelum media siap; abaikan.
   }
   audio.volume = SFX_VOL[name] ?? 0.6;
   audio.play().catch(() => {});
@@ -776,8 +756,6 @@ function playMusic(name) {
   if (!state.soundOn) return;
   const src = name === "game" ? "/assets/sounds/game_bgm.mp3" : "/assets/sounds/lobby.mp3";
   if (state.music && state.music.src.endsWith(src)) {
-    // Trek yang sama sudah dimuat. Jika sempat di-pause (mis. habis di-mute lalu
-    // di-unmute), lanjutkan lagi alih-alih diam — ini bug "musik tidak balik".
     if (state.music.paused) state.music.play().catch(() => {});
     return;
   }
@@ -864,8 +842,6 @@ async function handleRtcPeerJoined(payload) {
   await createRtcPeer(payload.peer_id, false);
 }
 
-// Tuning Opus agar suara tidak patah-patah: aktifkan in-band FEC (tahan packet
-// loss), matikan DTX (hindari potongan saat hening), paksa mono + bitrate stabil.
 function tuneOpusSdp(sdp) {
   if (!sdp) return sdp;
   const lines = sdp.split("\r\n");
@@ -957,7 +933,6 @@ async function handleRtcSignal(payload) {
       try {
         await pc.addIceCandidate(pc._pendingCandidates.shift());
       } catch {
-        // Ignore stale candidates.
       }
     }
     if (data.description.type === "offer") {
@@ -973,7 +948,6 @@ async function handleRtcSignal(payload) {
     try {
       await pc.addIceCandidate(data.candidate);
     } catch {
-      // ICE candidates can arrive during close/reconnect; ignore stale ones.
     }
   }
 }
@@ -1006,10 +980,6 @@ function closeRtcPeer(peerId) {
 }
 
 function setGameMsg(text) {
-  // Notifikasi hanya tampil di panel view yang sedang aktif. Sebelumnya pesan
-  // ditulis ke gameMsg + roomMsg + lobbyMsg sekaligus, sehingga teks in-game
-  // (mis. "Mengambil 8 kartu") nyangkut di layar lobby/room dan terlihat seperti
-  // output debug yang nyasar.
   setText(els.gameMsg, "");
   setText(els.roomMsg, "");
   setText(els.lobbyMsg, "");

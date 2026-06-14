@@ -1,11 +1,3 @@
-"""
-GameScene — papan permainan UNO, desain premium.
-
-Menampilkan: tangan pemain (kartu bisa diklik dengan hover effect),
-kartu teratas (discard), deck draw, lawan beserta jumlah kartu,
-indikator giliran & arah, pending draw stacking, ping,
-tombol UNO, dan pemilih warna saat memainkan kartu Wild.
-"""
 import math
 import pygame
 
@@ -19,7 +11,6 @@ from client.ui.widgets import (
 )
 from client.ui import assets
 from client.ui import sounds
-
 
 class GameScene(Scene):
     def __init__(self, app):
@@ -43,14 +34,13 @@ class GameScene(Scene):
                                          color=Palette.PANEL_LIGHT, font_size=16)
         self.selected_cards: list[dict] = []
         self.selected_indices: list[int] = []
-        # pemilih warna wild
         self.choosing_color_card: dict | None = None
         self.color_buttons: list[tuple[pygame.Rect, str]] = []
         self.message = ""
         self.message_timer = 0.0
         self._tick = 0
         self._hover_card_idx = -1
-        self._prev_turn = None  # untuk deteksi pergantian giliran
+        self._prev_turn = None
 
     def on_enter(self):
         self.choosing_color_card = None
@@ -59,7 +49,6 @@ class GameScene(Scene):
         sounds.play_music("game")
         self._join_voice()
 
-    # -- aksi ---------------------------------------------------------------
     def _join_voice(self):
         if self.state.voice and self.state.token and self.state.room_id:
             self.state.voice.join(
@@ -76,11 +65,9 @@ class GameScene(Scene):
             self.state.voice.toggle_mic()
 
     def _uno_self(self):
-        """Tekan UNO untuk diri sendiri (lindungi dari penalti)."""
         self.state.net.send(C2S.CALL_UNO, {"mode": "self"})
 
     def _uno_accuse(self):
-        """Lapor lawan yang sisa 1 kartu tapi lupa menekan UNO."""
         self.state.net.send(C2S.CALL_UNO, {"mode": "catch"})
 
     def _leave(self):
@@ -94,7 +81,6 @@ class GameScene(Scene):
         if cards and len(cards) > 1:
             payload["cards"] = cards
         self.state.net.send(C2S.PLAY_CARD, payload)
-        # Suara berbeda untuk kartu +2 / +4.
         if card.get("ctype") in ("Draw", "Wild_Draw"):
             sounds.play("card_play_plus")
         else:
@@ -108,7 +94,6 @@ class GameScene(Scene):
         self.message = text
         self.message_timer = 2.5
 
-    # -- input --------------------------------------------------------------
     def handle_event(self, event):
         self.btn_voice.handle(event)
         self.btn_leave.handle(event)
@@ -122,7 +107,6 @@ class GameScene(Scene):
             self.btn_play_selected.handle(event)
             self.btn_clear_selected.handle(event)
 
-        # ESC membatalkan pemilih warna Wild atau seleksi kartu yang berjalan.
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
             if self.choosing_color_card is not None:
                 self.choosing_color_card = None
@@ -132,7 +116,6 @@ class GameScene(Scene):
             return
 
         if event.type == pygame.MOUSEMOTION:
-            # Track hover pada kartu
             self._hover_card_idx = -1
             if self.choosing_color_card is None:
                 for i, (rect, _, _) in enumerate(reversed(self.card_rects)):
@@ -141,7 +124,6 @@ class GameScene(Scene):
                         break
 
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            # pemilih warna aktif?
             if self.choosing_color_card is not None:
                 for rect, color in self.color_buttons:
                     if rect.collidepoint(event.pos):
@@ -149,15 +131,12 @@ class GameScene(Scene):
                         self.choosing_color_card = None
                         self.selected_cards = []
                         return
-                # Klik di luar lingkaran warna → batalkan pilih warna.
                 self.choosing_color_card = None
                 sounds.play("click")
                 return
-            # klik deck untuk draw
             if self.deck_rect.collidepoint(event.pos) and self._is_my_turn():
                 self._draw()
                 return
-            # klik kartu di tangan
             for rect, card, idx in reversed(self.card_rects):
                 if rect.collidepoint(event.pos):
                     self._click_card(card, idx)
@@ -171,7 +150,7 @@ class GameScene(Scene):
         if card["color"] == "Wild":
             self.selected_cards = []
             self.selected_indices = []
-            self.choosing_color_card = card  # minta pilih warna
+            self.choosing_color_card = card
         else:
             self._toggle_selected_card(card, hand_index)
 
@@ -218,7 +197,6 @@ class GameScene(Scene):
         gs = self.state.game_state
         return gs and gs.get("current_turn") == self.state.user_id
 
-    # -- paket --------------------------------------------------------------
     def handle_packet(self, pkt):
         t, p = pkt["type"], pkt["payload"]
         if t == S2C.STATE_UPDATE:
@@ -233,7 +211,6 @@ class GameScene(Scene):
                 ]
                 self.selected_indices = [idx for idx, _ in kept]
                 self.selected_cards = [card for _, card in kept]
-            # Deteksi pergantian giliran → suara
             new_turn = p["state"].get("current_turn")
             if new_turn == self.state.user_id and old_turn != new_turn:
                 sounds.play("your_turn", 0.4)
@@ -244,7 +221,6 @@ class GameScene(Scene):
             self.state.hand.append(p["card"])
             sounds.play("card_draw", 0.4)
         elif t == S2C.DRAW_STACK_RESULT:
-            # Kartu dari draw stacking — sudah masuk hand via STATE_UPDATE
             count = p.get("count", len(p.get("cards", [])))
             self._set_message(f"Anda mengambil {count} kartu!")
             sounds.play("card_play_plus")
@@ -312,10 +288,6 @@ class GameScene(Scene):
                 if pl["user_id"] == self.state.user_id:
                     me = pl
                     break
-            # Tombol UNO sendiri selalu tersedia selama masih aktif & belum call.
-            # Pemain bertanggung jawab menekannya tepat waktu: sah saat sisa 1
-            # kartu, atau sisa 2 saat giliran sendiri (pre-call). Menekan terlalu
-            # dini saat kartu masih banyak berisiko penalti +2 dari server.
             if me and me.get("is_active", True) and not me.get("called_uno", False) \
                     and len(self.state.hand) >= 1:
                 self.show_uno_button = True
@@ -334,13 +306,11 @@ class GameScene(Scene):
                 self.message = ""
         self._update_uno_flags()
 
-    # -- render -------------------------------------------------------------
     def draw(self, surf):
         bg = assets.table_background(0)
         if bg:
             surf.blit(bg, (0, 0))
         else:
-            # Fallback: dark green gradient
             for y in range(config.WINDOW_HEIGHT):
                 t = y / config.WINDOW_HEIGHT
                 r = int(12 + t * 8)
@@ -377,11 +347,9 @@ class GameScene(Scene):
             x, y = slots[i]
             is_turn = gs.get("current_turn") == pl["user_id"]
 
-            # Glow ring jika giliran
             if is_turn:
                 draw_glow(surf, (x, y - 10), 60, Palette.GOLD, intensity=0.8)
 
-            # Name plate
             plate_w = 140
             plate_rect = (x - plate_w // 2, y - 55, plate_w, 28)
             draw_gradient_rect(surf, plate_rect,
@@ -397,7 +365,6 @@ class GameScene(Scene):
                 name += " (keluar)"
             draw_text(surf, name, (x, y - 41), 15, name_col, bold=is_turn, center=True)
 
-            # Tumpukan kartu punggung (fan)
             back = assets.card_back(42, 60)
             hand_count = min(pl["hand_count"], 10)
             fan_w = hand_count * 6 + 42
@@ -405,7 +372,6 @@ class GameScene(Scene):
             for c in range(hand_count):
                 surf.blit(back, (sx + c * 6, y - 30))
 
-            # Jumlah kartu badge
             badge_rect = (x - 16, y + 34, 32, 20)
             draw_gradient_rect(surf, badge_rect, (0, 0, 0, 160), (0, 0, 0, 100),
                                border_radius=10)
@@ -422,7 +388,6 @@ class GameScene(Scene):
     def _draw_center(self, surf, gs):
         cx, cy = config.WINDOW_WIDTH // 2, config.WINDOW_HEIGHT // 2
 
-        # Deck draw (punggung) dengan glow jika giliran sendiri
         self.deck_rect = pygame.Rect(cx - 140, cy - config.CARD_H // 2,
                                      config.CARD_W, config.CARD_H)
         if self._is_my_turn():
@@ -430,12 +395,10 @@ class GameScene(Scene):
         draw_shadow_rect(surf, self.deck_rect, offset=4, alpha=60, border_radius=10)
         surf.blit(assets.card_back(), self.deck_rect.topleft)
 
-        # Label deck
         draw_text(surf, f"Deck: {gs.get('draw_pile_count', 0)}",
                   (self.deck_rect.centerx, self.deck_rect.bottom + 16), 13,
                   Palette.TEXT_DIM, center=True)
 
-        # Kartu teratas (discard) dengan shadow
         top = gs.get("top_card")
         if top:
             from server.core.card import Card
@@ -446,7 +409,6 @@ class GameScene(Scene):
             draw_shadow_rect(surf, discard_rect, offset=5, alpha=70, border_radius=10)
             surf.blit(assets.card_surface(asset), (discard_x, discard_y))
 
-        # Warna aktif (penting setelah wild) — circle besar
         ac = gs.get("active_color")
         if ac and ac in Palette.UNO_COLORS:
             indicator_x = cx + 50 + config.CARD_W + 35
@@ -456,7 +418,6 @@ class GameScene(Scene):
             draw_text(surf, ac, (indicator_x, cy + 30), 12,
                       Palette.TEXT_DIM, center=True)
 
-        # Arah — animated arrow
         direction = gs.get("direction", 1)
         arrow_y = cy - 100
         pulse = 0.5 + 0.5 * math.sin(self._tick * 0.08)
@@ -470,19 +431,16 @@ class GameScene(Scene):
                   (*Palette.TEXT_DIM[:3], arrow_alpha), center=True)
         surf.blit(arrow_surf, (cx - 100, arrow_y))
 
-        # --- Pending draw indicator ---
         pending = gs.get("pending_draw", 0)
         if pending > 0:
             pd_type = gs.get("pending_draw_type", "")
             pd_label = f"+{pending}"
             pd_color = Palette.ACCENT if pd_type == "Draw" else Palette.PURPLE
 
-            # Glow background
             pd_x = cx
             pd_y = cy + config.CARD_H // 2 + 40
             draw_glow(surf, (pd_x, pd_y), 50, pd_color, intensity=1.0)
 
-            # Badge
             badge_w = 100
             badge_rect = (pd_x - badge_w // 2, pd_y - 18, badge_w, 36)
             draw_gradient_rect(surf, badge_rect, pd_color,
@@ -514,14 +472,11 @@ class GameScene(Scene):
             x = int(start_x + i * gap)
             cobj = Card.from_dict(card)
 
-            # Tentukan apakah kartu bisa dimainkan
             if pending > 0:
-                # Saat pending draw, kartu draw apa saja (+2 atau +4) bisa dimainkan
                 playable = my_turn and cobj.is_any_draw
             else:
                 playable = my_turn and top and cobj.matches(top, ac)
 
-            # Hover dan playable offset
             is_hover = (i == self._hover_card_idx)
             is_selected = i in self.selected_indices
             y_offset = 0
@@ -535,7 +490,6 @@ class GameScene(Scene):
             yy = y + y_offset
             rect = pygame.Rect(x, yy, config.CARD_W, config.CARD_H)
 
-            # Shadow kartu
             if is_hover:
                 draw_shadow_rect(surf, rect, offset=6, alpha=80, border_radius=10)
             else:
@@ -543,7 +497,6 @@ class GameScene(Scene):
 
             surf.blit(assets.card_surface(cobj.asset_name), rect.topleft)
 
-            # Glow border untuk kartu yang bisa dimainkan
             if playable:
                 glow_col = Palette.GOLD if not cobj.is_any_draw else Palette.ACCENT
                 glow_rect = rect.inflate(6, 6)
@@ -568,10 +521,8 @@ class GameScene(Scene):
     def _draw_hud(self, surf, gs):
         cx = config.WINDOW_WIDTH // 2
 
-        # Giliran indicator — top bar
         cur = gs.get("current_turn")
         if cur == self.state.user_id:
-            # Glow bar
             bar_surf = pygame.Surface((config.WINDOW_WIDTH, 44), pygame.SRCALPHA)
             draw_gradient_rect(bar_surf, (0, 0, config.WINDOW_WIDTH, 44),
                                (*Palette.GOLD[:3], 40), (*Palette.GOLD[:3], 0))
@@ -585,22 +536,18 @@ class GameScene(Scene):
             draw_text(surf, "Menunggu giliran lawan...", (cx, 20), 17,
                       Palette.TEXT_DIM, center=True)
 
-        # Ping
         draw_text(surf, f"Ping: {self.state.net.ping_ms} ms", (20, 22), 13,
                   Palette.TEXT_MUTED)
         self._draw_voice(surf)
 
-        # Tombol UNO diri sendiri
         if getattr(self, "show_uno_button", False):
             draw_glow(surf, self.btn_uno.rect.center, 50, Palette.ACCENT, intensity=0.6)
             self.btn_uno.draw(surf)
 
-        # Tombol Lapor Lupa UNO!
         if getattr(self, "show_accuse_button", False):
             draw_glow(surf, self.btn_accuse_uno.rect.center, 50, Palette.PURPLE, intensity=0.6)
             self.btn_accuse_uno.draw(surf)
 
-        # Status SUDAH UNO
         me = None
         for pl in gs.get("players", []):
             if pl["user_id"] == self.state.user_id:
@@ -622,7 +569,6 @@ class GameScene(Scene):
             self.btn_play_selected.draw(surf)
             self.btn_clear_selected.draw(surf)
 
-        # Pesan notifikasi — popup di bawah tengah
         if self.message:
             msg_w = max(300, len(self.message) * 10 + 40)
             msg_rect = (cx - msg_w // 2, config.WINDOW_HEIGHT - 178, msg_w, 36)
@@ -643,7 +589,6 @@ class GameScene(Scene):
                   (config.WINDOW_WIDTH - 285, 66), 12, Palette.TEXT_MUTED)
 
     def _draw_color_picker(self, surf):
-        # Full overlay
         overlay = pygame.Surface((config.WINDOW_WIDTH, config.WINDOW_HEIGHT), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 170))
         surf.blit(overlay, (0, 0))
@@ -651,7 +596,6 @@ class GameScene(Scene):
         cx = config.WINDOW_WIDTH // 2
         cy = config.WINDOW_HEIGHT // 2
 
-        # Panel
         panel_w, panel_h = 480, 220
         panel_rect = (cx - panel_w // 2, cy - panel_h // 2, panel_w, panel_h)
         draw_shadow_rect(surf, panel_rect, offset=8, alpha=80, border_radius=20)
@@ -672,10 +616,8 @@ class GameScene(Scene):
             by = cy - 20
             rect = pygame.Rect(bx, by, 90, 90)
 
-            # Glow
             draw_glow(surf, rect.center, 50, Palette.UNO_COLORS[color], intensity=0.5)
 
-            # Color circle
             pygame.draw.circle(surf, Palette.UNO_COLORS[color], rect.center, 38)
             pygame.draw.circle(surf, (255, 255, 255, 120), rect.center, 38, 3)
 

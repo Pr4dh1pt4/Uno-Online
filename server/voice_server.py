@@ -1,4 +1,3 @@
-"""UDP voice relay untuk live voice chat per room."""
 import socket
 import threading
 import time
@@ -7,7 +6,6 @@ import config
 from shared import voice_protocol as vp
 from server.services import auth_service
 from server.utils import logger
-
 
 class VoicePeer:
     def __init__(self, user_id: int, username: str, room_id: str, addr):
@@ -18,9 +16,7 @@ class VoicePeer:
         self.last_seq = -1
         self.last_seen = time.time()
 
-
 class VoiceServer:
-    """Relay UDP: validasi peer lalu broadcast audio ke peer room yang sama."""
 
     def __init__(self, room_manager):
         self.rm = room_manager

@@ -1,27 +1,14 @@
-"""
-Protokol komunikasi TCP dengan length-prefix framing.
-
-Format wire:
-    [4 byte big-endian: panjang payload] [payload JSON UTF-8]
-
-Karena TCP adalah stream (bukan message-based), framing diperlukan agar
-penerima tahu di mana satu paket berakhir dan paket berikutnya dimulai.
-Tanpa framing, dua paket bisa terbaca menyatu atau satu paket terbaca separuh.
-"""
 import json
 import struct
 import time
 
 HEADER_SIZE = 4
-MAX_PACKET_SIZE = 1 * 1024 * 1024  # 1 MB, batas anti oversized-packet
-
+MAX_PACKET_SIZE = 1 * 1024 * 1024
 
 class ProtocolError(Exception):
     pass
 
-
 def build_packet(ptype: str, payload: dict | None = None, seq: int = 0) -> bytes:
-    """Bangun bytes paket siap kirim (header + JSON)."""
     obj = {
         "type": ptype,
         "seq": seq,
@@ -34,9 +21,7 @@ def build_packet(ptype: str, payload: dict | None = None, seq: int = 0) -> bytes
     header = struct.pack(">I", len(body))
     return header + body
 
-
 def _recv_exact(sock, n: int) -> bytes | None:
-    """Terima tepat n byte dari socket. Return None jika koneksi tertutup."""
     buf = bytearray()
     while len(buf) < n:
         chunk = sock.recv(n - len(buf))
@@ -45,13 +30,7 @@ def _recv_exact(sock, n: int) -> bytes | None:
         buf.extend(chunk)
     return bytes(buf)
 
-
 def recv_packet(sock) -> dict | None:
-    """
-    Terima satu paket lengkap dari socket (blocking).
-    Return dict paket, atau None jika koneksi tertutup.
-    Raise ProtocolError jika frame rusak / oversized.
-    """
     header = _recv_exact(sock, HEADER_SIZE)
     if header is None:
         return None
@@ -66,7 +45,5 @@ def recv_packet(sock) -> dict | None:
     except (json.JSONDecodeError, UnicodeDecodeError) as e:
         raise ProtocolError(f"Malformed JSON: {e}")
 
-
 def send_packet(sock, ptype: str, payload: dict | None = None, seq: int = 0) -> None:
-    """Kirim satu paket ke socket."""
     sock.sendall(build_packet(ptype, payload, seq))

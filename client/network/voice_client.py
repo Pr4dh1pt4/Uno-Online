@@ -1,8 +1,3 @@
-"""Client UDP live voice chat.
-
-Voice memakai UDP agar frame audio yang terlambat bisa dilewati tanpa menahan
-gameplay. Capture/playback membutuhkan paket opsional `sounddevice`.
-"""
 import queue
 import socket
 import threading
@@ -14,16 +9,14 @@ from shared import voice_protocol as vp
 try:
     import numpy as np
     import sounddevice as sd
-except Exception as e:  # dependency/device audio opsional
+except Exception as e:
     np = None
     sd = None
     _IMPORT_ERROR = e
 else:
     _IMPORT_ERROR = None
 
-
 def _resample_int16(samples, src_rate: int, dst_rate: int):
-    """Resample mono int16 antar samplerate via interpolasi linear."""
     if src_rate == dst_rate or samples.size == 0:
         return samples
     n_src = samples.size
@@ -32,7 +25,6 @@ def _resample_int16(samples, src_rate: int, dst_rate: int):
     x_dst = np.linspace(0.0, 1.0, n_dst, endpoint=False)
     out = np.interp(x_dst, x_src, samples.astype(np.float32))
     return out.astype(np.int16)
-
 
 class VoiceClient:
     def __init__(self, host: str):
@@ -51,7 +43,6 @@ class VoiceClient:
         self._playback: "queue.Queue[bytes]" = queue.Queue(maxsize=24)
         self._input_stream = None
         self._output_stream = None
-        # Samplerate aktual perangkat (bisa berbeda dari rate wire 16 kHz).
         self._in_rate = vp.VOICE_SAMPLE_RATE
         self._out_rate = vp.VOICE_SAMPLE_RATE
 
@@ -131,7 +122,6 @@ class VoiceClient:
         self.leave()
 
     def _device_rate(self, kind: str) -> int:
-        """Samplerate default perangkat input/output, fallback 48 kHz."""
         try:
             rate = sd.query_devices(kind=kind).get("default_samplerate")
             if rate:
@@ -141,10 +131,6 @@ class VoiceClient:
         return 48000
 
     def _start_audio_streams(self) -> None:
-        # Coba buka di 16 kHz (rate wire). Jika perangkat tidak mendukung,
-        # buka di samplerate default perangkat lalu resample saat kirim/putar.
-        # Input & output dibuka independen agar salah satu gagal tidak
-        # mematikan keduanya (mis. mic mati tapi tetap bisa mendengar).
         self._input_stream = self._open_input()
         self._output_stream = self._open_output()
 
@@ -205,7 +191,6 @@ class VoiceClient:
             samples = _resample_int16(samples, self._in_rate, vp.VOICE_SAMPLE_RATE)
         raw = samples.tobytes()
         if len(raw) > vp.MAX_AUDIO_BYTES:
-            # clamp ke ukuran maksimum 1 frame (jaga-jaga pembulatan resample)
             raw = raw[:vp.MAX_AUDIO_BYTES]
         with self._send_lock:
             self._seq += 1

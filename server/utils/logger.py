@@ -1,7 +1,3 @@
-"""
-Logger aktivitas: menulis ke file log dan tabel activity_log.
-Memenuhi fitur wajib "Logging Aktivitas Player".
-"""
 import json
 import logging
 import os
@@ -22,21 +18,16 @@ logging.basicConfig(
 
 _log = logging.getLogger("uno")
 
-
 def info(msg: str) -> None:
     _log.info(msg)
-
 
 def warning(msg: str) -> None:
     _log.warning(msg)
 
-
 def error(msg: str) -> None:
     _log.error(msg)
 
-
 def activity(user_id: int | None, event_type: str, detail: dict | None = None) -> None:
-    """Catat event aktivitas ke DB + file."""
     detail_json = json.dumps(detail or {}, ensure_ascii=False)
     _log.info(f"ACTIVITY user={user_id} {event_type} {detail_json}")
     try:
@@ -45,5 +36,5 @@ def activity(user_id: int | None, event_type: str, detail: dict | None = None) -
             (user_id, event_type, detail_json),
             commit=True,
         )
-    except Exception as e:  # logging tidak boleh menjatuhkan server
+    except Exception as e:
         _log.warning(f"Gagal simpan activity_log: {e}")
