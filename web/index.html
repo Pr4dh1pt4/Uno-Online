@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>UNO Online</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main class="shell">
+    <section class="topbar">
+      <div>
+        <h1>UNO Online</h1>
+        <p id="subtitle">Network Programming Final Project</p>
+      </div>
+      <div class="status-strip">
+        <span id="connStatus">Connecting</span>
+        <span id="pingStatus">- ms</span>
+        <button id="soundBtn" class="icon-btn" title="Audio">Sound</button>
+        <button id="voiceBtn" class="icon-btn" title="Voice talk">Mic Off</button>
+      </div>
+    </section>
+
+    <section id="authView" class="panel auth-panel">
+      <div class="auth-card">
+        <h2>Masuk</h2>
+        <input id="usernameInput" autocomplete="username" placeholder="Username">
+        <input id="passwordInput" autocomplete="current-password" placeholder="Password" type="password">
+        <div class="row">
+          <button id="loginBtn" class="primary">Login</button>
+          <button id="registerBtn">Register</button>
+        </div>
+        <p id="authMsg" class="message"></p>
+      </div>
+    </section>
+
+    <section id="lobbyView" class="hidden">
+      <div class="grid lobby-grid">
+        <div class="panel">
+          <div class="panel-head">
+            <h2 id="welcomeText">Lobby</h2>
+            <button id="logoutBtn">Logout</button>
+          </div>
+          <div id="statsBox" class="stats"></div>
+          <div class="mode-switch">
+            <button id="rankedBtn" class="selected">Ranked</button>
+            <button id="classicBtn">Classic</button>
+          </div>
+          <div class="room-actions">
+            <button id="quickBtn" class="primary">Matchmaking</button>
+            <button id="createBtn">Create Room</button>
+          </div>
+          <div class="join-row">
+            <input id="roomCodeInput" placeholder="Room code">
+            <button id="joinBtn">Join</button>
+          </div>
+          <p id="lobbyMsg" class="message"></p>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Leaderboard Global</h2>
+            <button id="refreshLeaderboardBtn">Refresh</button>
+          </div>
+          <div id="leaderboardBox" class="leaderboard"></div>
+        </div>
+      </div>
+
+      <div class="panel history-panel">
+        <div class="panel-head">
+          <h2>Riwayat Match</h2>
+          <button id="refreshHistoryBtn">Refresh</button>
+        </div>
+        <div id="historyBox" class="history-list"></div>
+      </div>
+    </section>
+
+    <section id="roomView" class="panel hidden">
+      <div class="panel-head">
+        <div>
+          <h2>Room <span id="roomCodeText">-</span></h2>
+          <p id="roomMeta">Waiting</p>
+        </div>
+        <button id="leaveRoomBtn">Leave</button>
+      </div>
+      <div id="roomPlayers" class="players-list"></div>
+      <div class="row">
+        <button id="startBtn" class="primary">Start Match</button>
+      </div>
+      <p id="roomMsg" class="message"></p>
+    </section>
+
+    <section id="gameView" class="hidden">
+      <div class="game-layout">
+        <aside class="panel side-panel">
+          <div class="panel-head">
+            <h2>Players</h2>
+            <button id="leaveGameBtn">Leave</button>
+          </div>
+          <div id="turnInfo" class="turn-info">-</div>
+          <div id="playersBox" class="players-list"></div>
+          <div class="row compact">
+            <button id="unoBtn">UNO!</button>
+            <button id="catchUnoBtn">Lapor UNO</button>
+          </div>
+          <p id="gameMsg" class="message"></p>
+        </aside>
+
+        <div class="table-panel">
+          <div class="table-center">
+            <button id="drawBtn" class="deck-card" title="Draw card">
+              <img src="/assets/cards/Deck.png" alt="Deck">
+            </button>
+            <div class="discard">
+              <img id="topCardImg" src="/assets/cards/Deck.png" alt="Top card">
+              <span id="activeColor" class="color-pill">-</span>
+            </div>
+          </div>
+          <div id="colorPicker" class="color-picker hidden">
+            <span class="color-picker-label">Pilih warna</span>
+            <button data-color="Red" class="red">Red</button>
+            <button data-color="Green" class="green">Green</button>
+            <button data-color="Blue" class="blue">Blue</button>
+            <button data-color="Yellow" class="yellow">Yellow</button>
+            <button id="cancelWildBtn" class="cancel-wild">Batal</button>
+          </div>
+          <div class="selected-actions">
+            <button id="playSelectedBtn" class="primary">Mainkan</button>
+            <button id="clearSelectedBtn">Batal</button>
+          </div>
+          <div id="handBox" class="hand"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="resultView" class="panel hidden">
+      <div class="panel-head">
+        <h2>Match Result</h2>
+        <button id="backLobbyBtn" class="primary">Lobby</button>
+      </div>
+      <div id="resultBox" class="result-list"></div>
+    </section>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+venv/
+.git/
+.gitignore
+data/logs/*.log
+sound.zip
+tests/
+uno-online/
+README.md
+requirements.txt

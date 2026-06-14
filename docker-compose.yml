@@ -1,0 +1,85 @@
+services:
+  db:
+    image: mariadb:11
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${UNO_DB_PASSWORD:-password}
+      MARIADB_DATABASE: ${UNO_DB_NAME:-uno_online}
+      MARIADB_AUTO_UPGRADE: "1"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mariadb-admin ping -h 127.0.0.1 -uroot -p$${MARIADB_ROOT_PASSWORD} --silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  server:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      UNO_HOST: 0.0.0.0
+      UNO_PORT: ${UNO_PORT:-5555}
+      UNO_VOICE_PORT: ${UNO_VOICE_PORT:-5556}
+      UNO_WEB_HOST: 0.0.0.0
+      UNO_WEB_PORT: ${UNO_WEB_PORT:-8080}
+      UNO_GATEWAY_GAME_HOST: 127.0.0.1
+      UNO_GATEWAY_GAME_PORT: ${UNO_PORT:-5555}
+      UNO_DB_HOST: db
+      UNO_DB_PORT: 3306
+      UNO_DB_USER: root
+      UNO_DB_PASSWORD: ${UNO_DB_PASSWORD:-password}
+      UNO_DB_NAME: ${UNO_DB_NAME:-uno_online}
+      UNO_DB_POOL: ${UNO_DB_POOL:-8}
+      UNO_SESSION_TTL_HOURS: ${UNO_SESSION_TTL_HOURS:-72}
+    ports:
+      - "${UNO_PORT:-5555}:${UNO_PORT:-5555}/tcp"
+      - "${UNO_VOICE_PORT:-5556}:${UNO_VOICE_PORT:-5556}/udp"
+      - "${UNO_WEB_PORT:-8080}:${UNO_WEB_PORT:-8080}/tcp"
+    volumes:
+      - ./data/logs:/app/data/logs
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      - server
+    environment:
+      UNO_PUBLIC_DOMAIN: ${UNO_PUBLIC_DOMAIN:-72.155.88.239.sslip.io}
+      ACME_EMAIL: ${ACME_EMAIL:-admin@example.com}
+    ports:
+      - "${HTTP_PORT:-80}:80/tcp"
+      - "${HTTPS_PORT:-443}:443/tcp"
+    volumes:
+      - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+  turn:
+    image: coturn/coturn:4.6
+    restart: unless-stopped
+    command:
+      - -n
+      - --log-file=stdout
+      - --listening-port=3478
+      - --fingerprint
+      - --lt-cred-mech
+      - --realm=${UNO_PUBLIC_DOMAIN:-72.155.88.239.sslip.io}
+      - --user=${TURN_USER:-uno}:${TURN_PASSWORD:-uno-turn-pass}
+      - --external-ip=${TURN_PUBLIC_IP:-72.155.88.239}
+      - --min-port=49160
+      - --max-port=49200
+      - --no-multicast-peers
+      - --no-cli
+    ports:
+      - "${TURN_PORT:-3478}:3478/tcp"
+      - "${TURN_PORT:-3478}:3478/udp"
+      - "49160-49200:49160-49200/udp"
+
+volumes:
+  mariadb_data:
+  caddy_data:
+  caddy_config:
